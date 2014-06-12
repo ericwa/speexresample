@@ -1,5 +1,5 @@
-CFLAGS=$(shell pkg-config --cflags speex sndfile)
-LIBS=$(shell pkg-config --libs speex sndfile)
+CFLAGS=$(shell pkg-config --cflags speexdsp sndfile)
+LIBS=$(shell pkg-config --libs speexdsp sndfile)
 
 speexresample: speexresample.c
 	$(CC) $^ $(CFLAGS) $(LIBS) -o speexresample
