@@ -27,16 +27,16 @@ int speexresample(const char *infile, const char *outfile, const int outrate, co
 	int resampler_err = 0;
 	SpeexResamplerState *resampler_state = 
 		speex_resampler_init(infile_info.channels,
-			infile_info.samplerate,
-			outrate,
-			quality,
-			&resampler_err);
+							 infile_info.samplerate,
+							 outrate,
+							 quality,
+							 &resampler_err);
 
 	short buffer[BUFFERSAMPLES * infile_info.channels];
 
 	while (1)
 	{
-		sf_count_t buffersize = sf_readf_short(infile_sndfile, buffer, BUFFERSAMPLES);
+		int buffersize = (int)sf_readf_short(infile_sndfile, buffer, BUFFERSAMPLES);
 		if (buffersize == 0)
 			break;
 
@@ -46,7 +46,11 @@ int speexresample(const char *infile, const char *outfile, const int outrate, co
 
 			uint32_t in_processed = buffersize - bufferpos;
 			uint32_t out_processed = BUFFERSAMPLES;
-			speex_resampler_process_interleaved_int(resampler_state, buffer + bufferpos, &in_processed, outbuffer, &out_processed);
+			speex_resampler_process_interleaved_int(resampler_state,
+													buffer + (bufferpos * infile_info.channels),
+													&in_processed,
+													outbuffer,
+													&out_processed);
 
 			sf_writef_short(outfile_sndfile, outbuffer, out_processed);
 
