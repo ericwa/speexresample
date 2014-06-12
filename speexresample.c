@@ -12,7 +12,12 @@ int speexresample(const char *infile, const char *outfile, const int outrate, co
 
 	SF_INFO infile_info = {0};
 	SNDFILE *infile_sndfile = sf_open(infile, SFM_READ, &infile_info);
-
+	if (infile_sndfile == NULL)
+	{
+		fprintf(stderr, "couldn't open infile %s\n", infile);
+		return 1;
+	}
+	
 	SF_INFO outfile_info = { 
 		.frames = 0,
 		.samplerate = outrate,
@@ -21,8 +26,13 @@ int speexresample(const char *infile, const char *outfile, const int outrate, co
 		.sections = 0,
 		.seekable = 0
 	};
+	
 	SNDFILE *outfile_sndfile = sf_open(outfile, SFM_WRITE, &outfile_info);
-
+	if (outfile_sndfile == NULL)
+	{
+		fprintf(stderr, "couldn't open outfile %s\n", outfile);
+		return 1;
+	}
 	
 	int resampler_err = 0;
 	SpeexResamplerState *resampler_state = 
@@ -72,7 +82,7 @@ int main(int argc, const char **argv)
 	{
 		printf("usage: speexresample infile.wav outfile.wav <output-samplerate> <quality>\n");
 		printf("\tquality: 0-10, where 0 is worst, 10 is best\n");
-		return 0;
+		return 1;
 	}
 
 	return speexresample(argv[1], argv[2], atoi(argv[3]), atoi(argv[4]));
