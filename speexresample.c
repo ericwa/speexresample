@@ -22,11 +22,13 @@ THE SOFTWARE.
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <speex/speex_resampler.h>
 #include <sndfile.h>
 
 #define BUFFERSAMPLES 256
+#define MIN(x, y) ((x)<(y)?(x):(y))
 
 int speexresample(const char *infile, const char *outfile, const int outrate, const int quality)
 {
@@ -64,6 +66,11 @@ int speexresample(const char *infile, const char *outfile, const int outrate, co
 							 quality,
 							 &resampler_err);
 
+	speex_resampler_skip_zeros(resampler_state);
+
+	const int expected_samples_written = (double)infile_info.frames * ((double)outrate/(double)infile_info.samplerate);
+	int total_samples_written = 0;
+
 	short buffer[BUFFERSAMPLES * infile_info.channels];
 
 	while (1)
@@ -87,13 +94,38 @@ int speexresample(const char *infile, const char *outfile, const int outrate, co
 			sf_writef_short(outfile_sndfile, outbuffer, out_processed);
 
 			bufferpos += in_processed;
+			total_samples_written += out_processed;
 		}
+	}
+
+	// Feed the resampler zeros
+	while (total_samples_written < expected_samples_written)
+	{
+		const int needed = expected_samples_written - total_samples_written;
+		
+		short buffer[BUFFERSAMPLES * infile_info.channels];
+		short outbuffer[BUFFERSAMPLES * infile_info.channels];
+
+		memset(buffer, 0, sizeof(buffer));
+		
+		uint32_t in_processed = BUFFERSAMPLES;
+		uint32_t out_processed = MIN(needed, BUFFERSAMPLES);
+		speex_resampler_process_interleaved_int(resampler_state,
+												buffer,
+												&in_processed,
+												outbuffer,
+												&out_processed);
+
+		sf_writef_short(outfile_sndfile, outbuffer, out_processed);
+		total_samples_written += out_processed;
 	}
 
 	speex_resampler_destroy(resampler_state);
 
 	sf_close(infile_sndfile);
 	sf_close(outfile_sndfile);
+
+	printf("read %d samples, wrote %d samples\n", (int)infile_info.frames, total_samples_written);
 
 	return 0;
 }
