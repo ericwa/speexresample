@@ -46,7 +46,7 @@ int speexresample(const char *infile, const char *outfile, const int outrate, co
 		.frames = 0,
 		.samplerate = outrate,
 		.channels = infile_info.channels,
-		.format = infile_info.format,
+		.format = SF_FORMAT_WAV | SF_FORMAT_PCM_16,
 		.sections = 0,
 		.seekable = 0
 	};
