@@ -71,27 +71,27 @@ int speexresample(const char *infile, const char *outfile, const int outrate, co
 	const int expected_samples_written = (double)infile_info.frames * ((double)outrate/(double)infile_info.samplerate);
 	int total_samples_written = 0;
 
-	short buffer[BUFFERSAMPLES * infile_info.channels];
+	float buffer[BUFFERSAMPLES * infile_info.channels];
 
 	while (1)
 	{
-		int buffersize = (int)sf_readf_short(infile_sndfile, buffer, BUFFERSAMPLES);
+		int buffersize = (int)sf_readf_float(infile_sndfile, buffer, BUFFERSAMPLES);
 		if (buffersize == 0)
 			break;
 
 		for (int bufferpos = 0; bufferpos < buffersize; )
 		{
-			short outbuffer[BUFFERSAMPLES * infile_info.channels];
+			float outbuffer[BUFFERSAMPLES * infile_info.channels];
 
 			uint32_t in_processed = buffersize - bufferpos;
 			uint32_t out_processed = BUFFERSAMPLES;
-			speex_resampler_process_interleaved_int(resampler_state,
+			speex_resampler_process_interleaved_float(resampler_state,
 													buffer + (bufferpos * infile_info.channels),
 													&in_processed,
 													outbuffer,
 													&out_processed);
 
-			sf_writef_short(outfile_sndfile, outbuffer, out_processed);
+			sf_writef_float(outfile_sndfile, outbuffer, out_processed);
 
 			bufferpos += in_processed;
 			total_samples_written += out_processed;
@@ -103,20 +103,20 @@ int speexresample(const char *infile, const char *outfile, const int outrate, co
 	{
 		const int needed = expected_samples_written - total_samples_written;
 		
-		short buffer[BUFFERSAMPLES * infile_info.channels];
-		short outbuffer[BUFFERSAMPLES * infile_info.channels];
+		float buffer[BUFFERSAMPLES * infile_info.channels];
+		float outbuffer[BUFFERSAMPLES * infile_info.channels];
 
 		memset(buffer, 0, sizeof(buffer));
 		
 		uint32_t in_processed = BUFFERSAMPLES;
 		uint32_t out_processed = MIN(needed, BUFFERSAMPLES);
-		speex_resampler_process_interleaved_int(resampler_state,
-												buffer,
-												&in_processed,
-												outbuffer,
-												&out_processed);
+		speex_resampler_process_interleaved_float(resampler_state,
+												  buffer,
+												  &in_processed,
+												  outbuffer,
+												  &out_processed);
 
-		sf_writef_short(outfile_sndfile, outbuffer, out_processed);
+		sf_writef_float(outfile_sndfile, outbuffer, out_processed);
 		total_samples_written += out_processed;
 	}
 
