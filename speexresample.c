@@ -23,6 +23,7 @@ THE SOFTWARE.
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include <speex/speex_resampler.h>
 #include <sndfile.h>
@@ -30,7 +31,31 @@ THE SOFTWARE.
 #define BUFFERSAMPLES 256
 #define MIN(x, y) ((x)<(y)?(x):(y))
 
-int speexresample(const char *infile, const char *outfile, const int outrate, const int quality)
+static float max_amplitude;
+
+void check_max_amplitude(float *array, int len)
+{
+	for (int i=0; i<len; i++)
+	{
+		float sample_amplitude = fabs(array[i]);
+		if (sample_amplitude > max_amplitude)
+		{
+			max_amplitude = sample_amplitude;
+		}
+	}
+}
+
+static inline void scale(float *array, int len, float factor)
+{
+	if (factor == 1) return;
+	
+	for (int i=0; i<len; i++)
+	{
+		array[i] *= factor;
+	}
+}
+
+int speexresample(const char *infile, const char *outfile, const int outrate, const int quality, const float scalefactor)
 {
 	printf("infile: %s outfile: %s outrate: %d quality: %d\n", infile, outfile, outrate, quality); 
 
@@ -91,6 +116,8 @@ int speexresample(const char *infile, const char *outfile, const int outrate, co
 													outbuffer,
 													&out_processed);
 
+			check_max_amplitude(outbuffer, out_processed * infile_info.channels);
+			scale(outbuffer, out_processed * infile_info.channels, scalefactor);
 			sf_writef_float(outfile_sndfile, outbuffer, out_processed);
 
 			bufferpos += in_processed;
@@ -116,7 +143,10 @@ int speexresample(const char *infile, const char *outfile, const int outrate, co
 												  outbuffer,
 												  &out_processed);
 
+		check_max_amplitude(outbuffer, out_processed * infile_info.channels);
+		scale(outbuffer, out_processed * infile_info.channels, scalefactor);
 		sf_writef_float(outfile_sndfile, outbuffer, out_processed);
+		
 		total_samples_written += out_processed;
 	}
 
@@ -139,5 +169,14 @@ int main(int argc, const char **argv)
 		return 1;
 	}
 
-	return speexresample(argv[1], argv[2], atoi(argv[3]), atoi(argv[4]));
+	int result = speexresample(argv[1], argv[2], atoi(argv[3]), atoi(argv[4]), 1.0f);
+	
+	if (max_amplitude > 1)
+	{
+		const float scalefactor = 1.0f / max_amplitude;
+		printf("clipping detected, scaling by %f\n", scalefactor);
+		result = speexresample(argv[1], argv[2], atoi(argv[3]), atoi(argv[4]), scalefactor);
+	}
+	
+	return result;
 }
