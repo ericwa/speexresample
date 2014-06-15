@@ -97,32 +97,42 @@ int speexresample(const char *infile, const char *outfile, const int outrate, co
 	int total_samples_written = 0;
 
 	float buffer[BUFFERSAMPLES * infile_info.channels];
-
+	int fill_starting_at = 0;
+	
 	while (1)
 	{
-		int buffersize = (int)sf_readf_float(infile_sndfile, buffer, BUFFERSAMPLES);
+		int buffersize = (int)sf_readf_float(infile_sndfile, buffer + (fill_starting_at * infile_info.channels), BUFFERSAMPLES - fill_starting_at);
+		buffersize += fill_starting_at;
+		
 		if (buffersize == 0)
 			break;
 
-		for (int bufferpos = 0; bufferpos < buffersize; )
+		float outbuffer[BUFFERSAMPLES * infile_info.channels];
+
+		uint32_t in_processed = buffersize;
+		uint32_t out_processed = BUFFERSAMPLES;
+		speex_resampler_process_interleaved_float(resampler_state,
+												buffer,
+												&in_processed,
+												outbuffer,
+												&out_processed);
+
+		check_max_amplitude(outbuffer, out_processed * infile_info.channels);
+		scale(outbuffer, out_processed * infile_info.channels, scalefactor);
+		sf_writef_float(outfile_sndfile, outbuffer, out_processed);
+
+		if (in_processed < buffersize)
 		{
-			float outbuffer[BUFFERSAMPLES * infile_info.channels];
-
-			uint32_t in_processed = buffersize - bufferpos;
-			uint32_t out_processed = BUFFERSAMPLES;
-			speex_resampler_process_interleaved_float(resampler_state,
-													buffer + (bufferpos * infile_info.channels),
-													&in_processed,
-													outbuffer,
-													&out_processed);
-
-			check_max_amplitude(outbuffer, out_processed * infile_info.channels);
-			scale(outbuffer, out_processed * infile_info.channels, scalefactor);
-			sf_writef_float(outfile_sndfile, outbuffer, out_processed);
-
-			bufferpos += in_processed;
-			total_samples_written += out_processed;
+			int unprocessed_input = buffersize - in_processed;
+			memmove(buffer, buffer + (in_processed * infile_info.channels), unprocessed_input * infile_info.channels * sizeof(float));
+			fill_starting_at = unprocessed_input;
 		}
+		else
+		{
+			fill_starting_at = 0;
+		}
+		
+		total_samples_written += out_processed;
 	}
 
 	// Feed the resampler zeros
