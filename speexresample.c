@@ -55,7 +55,7 @@ static inline void scale(float *array, int len, float factor)
 	}
 }
 
-int speexresample(const char *infile, const char *outfile, const int outrate, const int quality, const float scalefactor)
+int speexresample(const char *infile, const char *outfile, const int outrate, const int quality, const float scalefactor, const int usefloat)
 {
 	printf("infile: %s outfile: %s outrate: %d quality: %d\n", infile, outfile, outrate, quality); 
 
@@ -71,7 +71,7 @@ int speexresample(const char *infile, const char *outfile, const int outrate, co
 		.frames = 0,
 		.samplerate = outrate,
 		.channels = infile_info.channels,
-		.format = SF_FORMAT_WAV | SF_FORMAT_PCM_16,
+		.format = SF_FORMAT_WAV | (usefloat ? SF_FORMAT_FLOAT : SF_FORMAT_PCM_16),
 		.sections = 0,
 		.seekable = 0
 	};
@@ -172,20 +172,23 @@ int speexresample(const char *infile, const char *outfile, const int outrate, co
 
 int main(int argc, const char **argv)
 {
-	if (argc != 5)
+	if (argc != 5 && argc != 6)
 	{
-		printf("usage: speexresample infile.wav outfile.wav <output-samplerate> <quality>\n");
+		printf("usage: speexresample infile.wav outfile.wav <output-samplerate> <quality> [float]\n");
 		printf("\tquality: 0-10, where 0 is worst, 10 is best\n");
 		return 1;
 	}
 
-	int result = speexresample(argv[1], argv[2], atoi(argv[3]), atoi(argv[4]), 1.0f);
+	int usefloat = (argc == 6
+					&& 0 == strcmp("float", argv[5]));
 	
-	if (max_amplitude > 1)
+	int result = speexresample(argv[1], argv[2], atoi(argv[3]), atoi(argv[4]), 1.0f, usefloat);
+	
+	if (!usefloat && max_amplitude > 1)
 	{
 		const float scalefactor = 1.0f / max_amplitude;
 		printf("clipping detected, scaling by %f\n", scalefactor);
-		result = speexresample(argv[1], argv[2], atoi(argv[3]), atoi(argv[4]), scalefactor);
+		result = speexresample(argv[1], argv[2], atoi(argv[3]), atoi(argv[4]), scalefactor, usefloat);
 	}
 	
 	return result;
