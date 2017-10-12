@@ -8,9 +8,9 @@ Trivial wav file resampler using [libspeexdsp](http://www.speex.org) and [libsnd
 Build
 -----
 
-Should build on a Mac with just:
+on macOS:
 
-    brew install sndfile speex
+    brew install libsndfile speexdsp
     make
     
 or any other platform with pkg-config.
